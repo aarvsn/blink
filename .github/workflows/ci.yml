@@ -26,6 +26,7 @@ jobs:
         run: |
           cp apps/panel/server/.env.example apps/panel/server/.env
           cd apps/panel/server
+          bun run cli bolt migrate --run
           JWT_SECRET=$(openssl rand -hex 32) APP_KEY=$(openssl rand -hex 32) PORT=3123 bun src/index.ts &
           for i in $(seq 1 20); do
             curl -sf http://127.0.0.1:3123/api/system && exit 0
