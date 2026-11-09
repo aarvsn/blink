@@ -1,0 +1,283 @@
+@import "tailwindcss";
+
+/* Blink Sans Fonts */
+@font-face {
+    font-family: 'Blink Sans';
+    src: url('/regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Blink Sans';
+    src: url('/semibold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Blink Sans';
+    src: url('/bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+}
+
+/* Coinbase Mono Fonts - Retained as requested */
+@font-face {
+    font-family: 'Coinbase Mono';
+    src: url('/Coinbase_Mono-Bold-web.woff2') format('woff2');
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Coinbase Mono';
+    src: url('/Coinbase_Mono-Extra_Light-web.woff2') format('woff2');
+    font-weight: 200;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Coinbase Mono';
+    src: url('/Coinbase_Mono-Light-web.woff2') format('woff2');
+    font-weight: 300;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Coinbase Mono';
+    src: url('/Coinbase_Mono-Medium-web.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Coinbase Mono';
+    src: url('/Coinbase_Mono-Regular-web.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+}
+
+/* Global font family settings */
+* {
+    font-family: 'Blink Sans', sans-serif;
+}
+
+/* Global button cursor style */
+button {
+    cursor: pointer;
+}
+
+.font-mono {
+    font-family: 'Coinbase Mono', monospace !important;
+}
+
+.font-normal {
+    font-weight: 200;
+    /* Using regular weight for medium */
+}
+
+/* Font weight mappings */
+.font-medium {
+    font-weight: 400;
+    /* Using regular weight for medium */
+}
+
+.font-semibold {
+    font-weight: 600;
+    /* Using semibold weight */
+}
+
+.font-bold {
+    font-weight: 700;
+    /* Using bold weight */
+}
+
+/* Animation styles */
+/* Custom optimized spring easing function */
+.ease-spring {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1.2);
+}
+
+/* Remove white flash on active/focus for tab buttons */
+.tab-button:focus-visible {
+    outline: none;
+    border-color: transparent;
+}
+
+.tab-button {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Animation keyframes */
+@keyframes scale-in {
+    0% {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes fade-in {
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes slide-in {
+    0% {
+        transform: translateX(20px);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Animation classes */
+.animate-scale-in {
+    animation: scale-in 0.15s ease-out forwards;
+}
+
+.animate-fade-in {
+    animation: fade-in 0.1s ease-out forwards;
+}
+
+.animate-slide-in {
+    animation: slide-in 0.2s ease-out forwards;
+}
+
+/* GLOBAL SCROLLBAR HIDING - Applied to entire webapp */
+
+/* Hide scrollbars globally for all elements */
+* {
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+*::-webkit-scrollbar {
+    display: none;
+    /* Safari and Chrome */
+}
+
+/* Ensure body and html never show scrollbars */
+html,
+body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    overflow-x: hidden;
+    /* Prevent horizontal scrolling */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbars for common scrollable containers */
+div,
+main,
+section,
+article,
+aside,
+nav,
+header,
+footer {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+div::-webkit-scrollbar,
+main::-webkit-scrollbar,
+section::-webkit-scrollbar,
+article::-webkit-scrollbar,
+aside::-webkit-scrollbar,
+nav::-webkit-scrollbar,
+header::-webkit-scrollbar,
+footer::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbars for form elements and inputs */
+textarea,
+select,
+input {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+textarea::-webkit-scrollbar,
+select::-webkit-scrollbar,
+input::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbars for overflow containers */
+.overflow-auto,
+.overflow-scroll,
+.overflow-y-auto,
+.overflow-y-scroll,
+.overflow-x-auto,
+.overflow-x-scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.overflow-auto::-webkit-scrollbar,
+.overflow-scroll::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-y-scroll::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-x-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+/* Utility class for explicit scrollbar hiding (kept for backwards compatibility) */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbars for modals, dropdowns, and overlays */
+.modal,
+.dropdown,
+.overlay,
+.popup {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.modal::-webkit-scrollbar,
+.dropdown::-webkit-scrollbar,
+.overlay::-webkit-scrollbar,
+.popup::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbars for code blocks and pre elements */
+pre,
+code {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+pre::-webkit-scrollbar,
+code::-webkit-scrollbar {
+    display: none;
+}

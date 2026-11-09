@@ -1,0 +1,90 @@
+---
+title: Units
+description: The unit format v3 — Docker images, variables, config files, install scripts and egg imports.
+icon: 'Package'
+---
+
+Units are the templates servers are created from — the Blink equivalent of
+Pterodactyl "eggs". Manage them under **Admin → Units**.
+
+## Format version
+
+Units carry a `meta.version` of `blink/unit:v3` (imported Pterodactyl eggs
+are converted to this format). Version `v2` units keep working but expose no
+v3 features.
+
+## Unit fields
+
+| Field | Purpose |
+| ----- | ------- |
+| `name`, `shortName` | Display names, e.g. "Paper" / "Paper". |
+| `dockerImage` | Default image used when a server doesn't pick one. |
+| `dockerImages` | Optional list of `{ image, displayName }` choices users may switch between. |
+| `defaultStartupCommand` | Startup command applied to new servers. |
+| `startup.userEditable` | Whether users may edit their startup command. |
+| `startup.stopCommand`, `startup.readyRegex` | Reserved for v3 server-control features. |
+| `environmentVariables` | Variables injected into the container and templated into commands. |
+| `configFiles` | Files written into the volume on install. |
+| `installScript` | `{ dockerImage, entrypoint, script }` executed once per install/reinstall. |
+| `cargoContainers` | Cargo attached to every server of this unit. |
+
+## Variables
+
+Each variable has `name`, `description`, `defaultValue` and `rules`
+(pipe-separated, Pterodactyl-style):
+
+| Rule | Behaviour |
+| ---- | --------- |
+| `nullable` | Empty values are allowed |
+| `string` | Any string |
+| `max:N` | At most N characters |
+
+Variable values are available in two places:
+
+* **Startup commands** — `%server_jar%` refers to the variable named
+  `Server Jar` (lower-cased, spaces to underscores).
+* **Install scripts** — exported as environment variables with the raw name:
+  `export SERVER_JAR="paper.jar"`.
+
+If the user-supplied value fails the rules, server creation fails with a
+validation error.
+
+## Install scripts
+
+The install script is a bash fragment. The daemon wraps it in a generated
+script that runs inside `install.dockerImage` with the volume mounted at
+`/mnt/server`:
+
+* The fragment is interpolated **verbatim** — it is trusted code from your
+  panel, exactly like Pterodactyl eggs. Never install units from sources you
+  don't trust.
+* Output is teed to `.installation/logs/install.log`.
+* A non-zero exit marks the server `install_failed`.
+
+Example:
+
+```bash
+echo "Downloading Paper..."
+curl -L -o server.jar https://api.papermc.io/v2/projects/paper/versions/1.21/builds/latest/downloads/paper-1.21.jar
+```
+
+## Importing Pterodactyl eggs
+
+**Admin → Units → Import** accepts a Pterodactyl egg JSON export. The
+converter maps:
+
+| Egg | Unit |
+| --- | ---- |
+| `docker_images` (map) | `dockerImages` list + first entry as default |
+| `startup` | `defaultStartupCommand` |
+| `environment` (variables) | `environmentVariables` with rules |
+| `files` (templates) | `configFiles` |
+| `scripts.installation` | `installScript` |
+
+Egg features (specific modpack managers and similar) are not carried over —
+converted units stick to plain startup + install semantics.
+
+## Export
+
+The unit list offers JSON export of any unit, including its `meta.version`.
+Round-tripping units between panels keeps `blink/unit:v3` intact.

@@ -1,0 +1,95 @@
+---
+title: Introduction
+description: What Blink is, what it runs, and how the pieces fit together.
+icon: 'Zap'
+---
+
+Blink is a self-hosted game server management platform. It has two parts:
+
+* **The panel** (`apps/panel`) — a web application where users register, join
+  projects and manage servers; admins manage nodes, units, cargo and API keys.
+  The frontend is a React single-page app; the API is a Bun + Express server
+  backed by SQLite.
+* **blinkd** (`apps/blinkd`) — a daemon written in Rust that runs on every
+  machine (node) that hosts game servers. It creates and supervises one Docker
+  container per server, exposes the file manager API and streams live consoles
+  over WebSocket.
+
+Blink is a fork of Argon, which itself descends from Pterodactyl Panel and
+Skyport. The daemon was rewritten from TypeScript to Rust. Blink is released
+under [GPL-3.0](https://github.com/aarvsn/blink/blob/main/LICENSE).
+
+## How the pieces talk
+
+```
+                Browser
+                   │  HTTPS (session JWT)
+                   ▼
+        ┌─────────────────────┐        HTTP + WebSocket
+        │   Blink panel       │──────────────┐
+        │   React SPA         │              │ X-API-Key (node key)
+        │   Express API       │◄─────────────┤
+        │   SQLite (blink.db) │              ▼
+        └─────────────────────┘      ┌──────────────────┐
+                   ▲                 │     blinkd       │
+                   │ GET /config     │  Rust + bollard  │
+                   │ GET /validate/… │  SQLite          │
+                   │ GET /cargo-files│  volumes/        │
+                   └─────────────────┤      │           │
+                                     └──────┼───────────┘
+                                            ▼
+                                     Docker Engine
+                                     (one container per server)
+```
+
+* The panel reaches each node at `http://<node fqdn>:<node port>` using the
+  node's connection key (`X-API-Key`). Every server CRUD, power and cargo
+  operation starts here.
+* Browsers reach the node **directly** for two things: the live console
+  (`GET /?server=…&token=…` WebSocket) and the file manager
+  (`/api/v1/filesystem/...`). Both authenticate with a per-server
+  *validation token* that the node checks against the panel.
+* blinkd calls back into the panel to fetch a server's unit configuration and
+  to validate tokens.
+
+Because browsers talk to nodes directly, nodes must be reachable from the
+internet (or at least from your users' networks) on their configured port.
+
+## Key concepts
+
+| Concept     | Where it lives | What it is |
+| ----------- | -------------- | ---------- |
+| Node        | Panel DB       | A machine running blinkd, identified by FQDN, port and a connection key. |
+| Region      | Panel DB       | A grouping of nodes; the panel can auto-pick the best node in a region. |
+| Allocation  | Panel DB       | A `(bindAddress, port)` pair on a node, assigned to at most one server. |
+| Unit        | Panel DB       | The "egg" template: Docker image, startup command, variables, install script, config files. |
+| Server      | Panel + node   | An instance of a unit on a node with an allocation and resource limits. |
+| Cargo       | Panel + node   | Managed files (jars, binaries) shipped into server volumes with protection flags. |
+| Project     | Panel DB       | A collaborative space grouping servers and users. |
+
+## What the Rust rewrite changed
+
+blinkd is a from-scratch Rust implementation of the original TypeScript
+daemon, wire-compatible with the panel. Notable differences:
+
+* **Constant-time API key comparison** — the shared node key is compared with
+  `subtle` instead of `===`, and is never logged.
+* **`/api/v1/state` requires the API key** — node hardware details are no
+  longer readable by anonymous visitors. The panel proxies this endpoint.
+* **Real path traversal defence** — filesystem paths are validated
+  component-wise and symlink-resolved, fixing the classic `startsWith` prefix
+  bug (a sibling directory named `server2` could be reached from `server`).
+* **No user-controlled regex** — file search is a case-insensitive substring
+  match, so a hostile search term cannot cause catastrophic backtracking.
+* **Per-IP WebSocket limit enforced** — the original had the check disabled.
+* **CPU limits are actually enforced** — the original multiplied the panel's
+  CPU value incorrectly, making container CPU quotas effectively unlimited.
+* **No tokens in logs** — validation tokens and API keys never reach the log
+  output.
+
+## Licence and attribution
+
+Blink is GPL-3.0. It preserves the history of the projects it came from:
+thanks to the Argon contributors and to the Pterodactyl and Skyport teams
+whose work Blink inherits. See the repository `README` for the full
+attribution.

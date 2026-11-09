@@ -1,0 +1,23 @@
+# blinkd configuration reference — see docs/blinkd-configuration
+# Copy to blinkd.yml and adjust.
+
+# Shared secret the panel sends as X-API-Key.
+# Generate with: openssl rand -hex 32
+apiKey: replace-me-with-openssl-rand-hex-32
+
+bindAddress: 0.0.0.0
+bindPort: 8080
+
+# Where per-server volumes live.
+volumesDirectory: ./volumes
+
+# Base URL of the panel (must be reachable from this node).
+appUrl: http://localhost:3000
+
+# Comma-separated CORS allowlist for browser-facing endpoints.
+corsOrigin: http://localhost:3000
+
+# Token validation cache lifetime and connection limits.
+validationCacheTtlSecs: 60
+maxConnectionsPerIp: 10
+maxUploadSizeMb: 100

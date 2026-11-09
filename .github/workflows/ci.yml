@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  panel:
+    name: Panel (build & typecheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build panel frontend (tsc + vite)
+        run: bun --cwd apps/panel/frontend build
+      - name: Boot API smoke test
+        run: |
+          cp apps/panel/server/.env.example apps/panel/server/.env
+          cd apps/panel/server
+          JWT_SECRET=$(openssl rand -hex 32) APP_KEY=$(openssl rand -hex 32) PORT=3123 bun src/index.ts &
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:3123/api/system && exit 0
+            sleep 1
+          done
+          echo "API did not answer /api/system" && exit 1
+
+  blinkd:
+    name: blinkd (clippy, test, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/blinkd
+      - name: Clippy
+        run: cargo clippy --manifest-path apps/blinkd/Cargo.toml -- -D warnings
+      - name: Tests
+        run: cargo test --manifest-path apps/blinkd/Cargo.toml
+      - name: Release build
+        run: cargo build --release --manifest-path apps/blinkd/Cargo.toml
+
+  docs:
+    name: Docs (build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build docs
+        run: bun --cwd apps/docs build

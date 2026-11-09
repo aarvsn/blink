@@ -1,0 +1,96 @@
+---
+title: Troubleshooting
+description: Common failure modes and how to diagnose them.
+icon: 'LifeBuoy'
+---
+
+## The panel boots then dies with a JWT/APP_KEY error
+
+The API refuses to start in `NODE_ENV=production` with a missing or default
+`JWT_SECRET`/`APP_KEY`. Generate them and restart:
+
+```bash
+echo "JWT_SECRET=$(openssl rand -hex 32)" >> apps/panel/server/.env
+echo "APP_KEY=$(openssl rand -hex 32)"   >> apps/panel/server/.env
+```
+
+Sessions are invalidated whenever `JWT_SECRET` changes.
+
+## "Frontend Build Not Found" when opening the panel
+
+The API serves the SPA from `apps/panel/frontend/dist`. Build it:
+
+```bash
+bun --cwd apps/panel/frontend build
+```
+
+`./install.sh` does this automatically.
+
+## Node shows offline
+
+1. Is blinkd running? `systemctl status blinkd` or check the console output.
+2. Can the **panel** reach `node-fqdn:port`? The online check is a TCP dial
+   from the panel process — firewalls on the node side are a common cause.
+3. Did the connection key change on the node? Update it in the node form.
+   Mismatches surface as failed daemon calls in the panel log, not as an
+   offline marker.
+
+## Node online but servers stuck in `installing`
+
+The install pipeline runs on the node. Check:
+
+```bash
+tail -n 50 apps/blinkd/volumes/<serverId>/.installation/logs/install.log
+# or the failure copy in the volume root:
+tail -n 50 apps/blinkd/volumes/<serverId>/installation.log
+```
+
+Common causes: the install or game image can't be pulled (registry rate
+limits, typos in the unit), or the install script exits non-zero. Fix the
+unit and trigger **Reinstall**.
+
+## Console says "Failed to connect to blinkd"
+
+* The console is a **browser → node** WebSocket. The node must be reachable
+  from your users' networks on its port.
+* If the panel is HTTPS, the console connects with `wss://` — the node (or
+  its proxy) must speak TLS. Plain `ws://` behind an HTTPS panel is blocked
+  by browsers as mixed content.
+* Every connection needs a valid `?server=&token=` pair; the node validates
+  the token against the panel and caches it briefly. If you restarted the
+  panel with a new `APP_KEY`, re-open the console.
+
+## CORS errors in the browser when using the file manager
+
+The daemon only accepts browser origins listed in `corsOrigin` (comma
+separated). Add your panel's exact origin, scheme included, and restart
+blinkd.
+
+## "Cannot modify readonly cargo file"
+
+The file is cargo-managed with `readonly: true`. Remove or relax the cargo
+entry in **Admin → Cargo**, re-ship, then retry. Deletion may also be blocked
+by `noDelete`.
+
+## File manager returns 400 "Invalid path"
+
+The path failed the traversal guard. If you're calling the API directly, use
+paths relative to the server root without `..` segments or absolute paths.
+
+## Server CPU usage never seems limited
+
+Old servers created by the TypeScript daemon may have stored limits with the
+broken conversion. Re-save the server's CPU setting (or recreate it) so the
+Rust daemon stores and applies the quota correctly.
+
+## blinkd logs "Docker daemon is not reachable"
+
+The daemon started but Docker is down or the socket permission is missing:
+
+```bash
+sudo systemctl start docker
+sudo usermod -aG docker blinkd   # then re-login
+```
+
+Container endpoints fail per-request until Docker answers; token validation
+and the file manager keep working.

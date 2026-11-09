@@ -1,0 +1,54 @@
+---
+title: blinkd security
+description: The node's trust model, authentication flows and a hardening checklist.
+icon: 'ShieldCheck'
+---
+
+A node runs containers with bind-mounted host directories and holds a shared
+secret with the panel — treat node security as part of panel security.
+
+## Trust model
+
+* The **panel** is trusted with node credentials and with executing install
+  scripts on nodes (they are arbitrary shell by design, like Pterodactyl
+  eggs). Only install units you trust.
+* **Browsers** are never trusted directly. They present a per-server
+  *validation token*; the node phones home to the panel
+  (`GET /api/servers/:internalId/validate/:token`) and caches the result for
+  `validationCacheTtlSecs` (default 60 s). Invalid or missing tokens get
+  HTTP 401/403 and a closed WebSocket (code 1008).
+* The **panel→node API** is protected by the `X-API-Key` connection key,
+  compared in constant time.
+
+## What the Rust daemon hardened
+
+Compared to the original TypeScript daemon:
+
+| Area | Change |
+| ---- | ------ |
+| Key comparison | `subtle` constant-time equality; the key and its prefixes are never logged |
+| Key logging | Validation tokens are never printed (the original logged them on every console connection) |
+| `/api/v1/state` | Now requires the API key; the panel proxies it. Kernel/hostname/memory are no longer public |
+| Path traversal | Component-wise lexical validation plus symlink-aware canonicalisation on every filesystem route |
+| Search | No user-controlled `RegExp` — plain substring matching, bounded results |
+| WebSocket limits | `maxConnectionsPerIp` is enforced (default 10) |
+| Console commands | Printable-ASCII filtered, length-capped, written directly to the container's stdin — never run through a shell |
+| Uploads | Size-capped; client-supplied filenames are sanitised; readonly cargo files can't be overwritten |
+| Zip extraction | Uses the zip crate's traversal-safe extraction into a temp directory, then cargo-conflict checks before moving files in |
+
+## Hardening checklist
+
+* [ ] Change `apiKey` from the template value — the daemon warns loudly until
+  you do.
+* [ ] Serve the panel over HTTPS and put nodes behind TLS where users reach
+  them (`https://` FQDNs are accepted in the node form; the console switches
+  to WSS automatically).
+* [ ] Point `appUrl` at the panel's **public** HTTPS URL.
+* [ ] Restrict `corsOrigin` to the panel's origin(s) — this gates the
+  browser-facing file manager and console.
+* [ ] Run blinkd as a non-root user with access to the Docker socket
+  (`docker` group) and the volumes directory only.
+* [ ] Keep `bindAddress` on a public interface only when the node must serve
+  browsers; a panel-only node can bind `127.0.0.1` behind a firewall.
+* [ ] Watch `journalctl -u blinkd` — every failed authentication and install
+  failure is logged.

@@ -1,0 +1,19 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "introduction",
+    "installation",
+    "panel-configuration",
+    "nodes",
+    "servers",
+    "units",
+    "cargo",
+    "file-manager",
+    "blinkd-configuration",
+    "blinkd-security",
+    "api-reference",
+    "cli",
+    "development",
+    "troubleshooting"
+  ]
+}

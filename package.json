@@ -1,0 +1,32 @@
+{
+  "name": "blink",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Blink — a modern game server management panel and blinkd node daemon",
+  "license": "GPL-3.0",
+  "author": "aarvsn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aarvsn/blink"
+  },
+  "workspaces": [
+    "apps/panel/frontend",
+    "apps/panel/server",
+    "apps/docs"
+  ],
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "scripts": {
+    "dev:panel:web": "bun --cwd apps/panel/frontend dev",
+    "dev:panel:api": "bun --cwd apps/panel/server dev",
+    "build:panel": "bun --cwd apps/panel/frontend build",
+    "start:panel": "bun --cwd apps/panel/server start",
+    "build:docs": "bun --cwd apps/docs build",
+    "dev:docs": "bun --cwd apps/docs dev",
+    "build:blinkd": "cargo build --release --manifest-path apps/blinkd/Cargo.toml",
+    "test:blinkd": "cargo test --manifest-path apps/blinkd/Cargo.toml",
+    "typecheck": "bun --cwd apps/panel/frontend typecheck",
+    "postinstall": "echo 'Blink workspace ready. Run ./install.sh for a guided setup.'"
+  }
+}

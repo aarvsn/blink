@@ -1,0 +1,75 @@
+---
+title: Development
+description: Monorepo layout, running things locally, tests and CI.
+icon: 'Wrench'
+---
+
+The repository is a Bun workspace monorepo with a Rust crate inside:
+
+```
+blink/
+├── apps/
+│   ├── panel/
+│   │   ├── frontend/   # @blink/panel-web — React 18 + Vite + Tailwind 4 SPA
+│   │   └── server/     # @blink/panel-api — Bun + Express + SQLite API
+│   ├── blinkd/         # Rust node daemon (axum, bollard, rusqlite)
+│   └── docs/           # @blink/docs — fumadocs (Next.js) documentation site
+├── install.sh
+└── package.json        # workspaces + orchestration scripts
+```
+
+## Running locally
+
+```bash
+bun install
+
+# API with auto-reload on :3000
+bun dev:panel:api
+
+# Frontend dev server on :5173 (proxies /api to :3000)
+bun dev:panel:web
+
+# Docs dev server on :3001
+bun dev:docs
+
+# blinkd
+cargo run --manifest-path apps/blinkd/Cargo.toml
+```
+
+For frontend development you don't need the built SPA — the Vite dev server
+proxies API calls. For end-to-end work against a real node, run blinkd with a
+`blinkd.yml` whose `appUrl` points at the panel.
+
+## Tests
+
+```bash
+# Rust: unit tests (path safety, config parsing, variables, DB)
+cargo test --manifest-path apps/blinkd/Cargo.toml
+
+# Rust: lints
+cargo clippy --manifest-path apps/blinkd/Cargo.toml -- -D warnings
+
+# Panel frontend: typecheck + build
+bun --cwd apps/panel/frontend build
+```
+
+The Rust unit tests intentionally cover the security-critical helpers: the
+path-traversal guard (including the sibling-directory prefix case), variable
+rule evaluation and the config parser.
+
+## CI
+
+`.github/workflows/ci.yml` runs on every push and pull request:
+
+1. **panel** — `bun install`, typecheck and production build of the frontend.
+2. **blinkd** — `cargo clippy -- -D warnings`, `cargo test`,
+   `cargo build --release`.
+3. **docs** — production build of the fumadocs site.
+
+## Conventions
+
+* TypeScript packages are scoped (`@blink/*`); versions move together.
+* The panel's runtime version is its `package.json` version, served by
+  `GET /api/system` and shown on the admin overview — never hard-code it.
+* blinkd is one crate with small modules (`docker`, `panel`, `routes`, `ws`);
+  keep Docker/panel IO out of `util`-style pure helpers so they stay testable.

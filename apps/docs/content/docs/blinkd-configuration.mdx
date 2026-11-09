@@ -1,0 +1,110 @@
+---
+title: blinkd configuration
+description: blinkd.yml reference, the configure wizard and operating the daemon.
+icon: 'Terminal'
+---
+
+blinkd reads `blinkd.yml` from its working directory (override with the
+`BLINKD_CONFIG` environment variable). If the file is missing, the daemon
+writes a template and boots with defaults.
+
+## Reference
+
+```yaml
+# Shared secret the panel sends as X-API-Key.
+# Generate with: openssl rand -hex 32
+apiKey: change-me
+
+bindAddress: 0.0.0.0
+bindPort: 8080
+
+# Where per-server volumes live (one directory per server).
+volumesDirectory: /var/lib/blinkd/volumes
+
+# Base URL of the panel. Used to fetch configs and validate tokens;
+# must be reachable from this node. Trailing slashes are trimmed.
+appUrl: https://panel.example.com
+
+# Comma-separated CORS allowlist for browser-originated calls
+# (file manager and console).
+corsOrigin: https://panel.example.com
+
+# Seconds a validated browser token stays cached. Short enough that
+# revoked tokens stop working quickly, long enough to spare the panel.
+validationCacheTtlSecs: 60
+
+# Maximum concurrent console WebSockets per client IP.
+maxConnectionsPerIp: 10
+
+# Maximum accepted upload size in megabytes (file manager uploads
+# and zip extraction).
+maxUploadSizeMb: 100
+```
+
+| Key | Default |
+| --- | ------- |
+| `apiKey` | *(template value — set your own)* |
+| `bindAddress` | `127.0.0.1` |
+| `bindPort` | `8080` |
+| `volumesDirectory` | `./volumes` |
+| `appUrl` | `http://localhost:3000` |
+| `corsOrigin` | `http://localhost:5173` |
+| `validationCacheTtlSecs` | `60` |
+| `maxConnectionsPerIp` | `10` |
+| `maxUploadSizeMb` | `100` |
+
+The value shown to copy into the panel's node form is `apiKey`; the panel
+sends it as `X-API-Key` on every daemon call.
+
+## Commands
+
+```bash
+blinkd              # start the daemon
+blinkd configure    # interactive wizard, writes ./blinkd.yml
+blinkd version      # print the version
+```
+
+The wizard asks for the panel URL, bind port, connection key and CORS
+origins, and always writes `bindAddress: 0.0.0.0`.
+
+## Lifecycle
+
+On boot the daemon:
+
+1. Loads and validates `blinkd.yml` (missing file → template is written).
+2. Creates `volumesDirectory` if needed.
+3. Connects to Docker and pings the daemon. A missing Docker socket is fatal;
+   a stopped daemon is tolerated with a warning so file-manager and token
+   validation keep working while Docker restarts.
+4. Opens `blinkd.db` (SQLite; schema below) in the working directory.
+5. Starts the HTTP + WebSocket server on `bindAddress:bindPort`.
+
+## Local database schema
+
+```sql
+CREATE TABLE servers (
+  id TEXT PRIMARY KEY,          -- internalId the panel uses
+  docker_id TEXT,               -- container id once created
+  name TEXT NOT NULL,
+  image TEXT NOT NULL,
+  state TEXT NOT NULL,
+  memory_limit INTEGER NOT NULL,
+  cpu_limit INTEGER NOT NULL,
+  variables TEXT NOT NULL,      -- JSON array
+  startup_command TEXT NOT NULL,
+  install_script TEXT NOT NULL, -- JSON
+  allocation TEXT NOT NULL,     -- JSON {bindAddress, port}
+  config_files TEXT
+);
+```
+
+The file is a cache, not a source of truth — the panel's database owns the
+server list. Deleting `blinkd.db` is safe while no servers are running.
+
+## Observability
+
+blinkd logs to stdout with `tracing`. Adjust verbosity with `RUST_LOG`:
+
+```bash
+RUST_LOG=blinkd=debug,tower_http=info ./blinkd
+```

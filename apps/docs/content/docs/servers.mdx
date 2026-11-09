@@ -1,0 +1,81 @@
+---
+title: Servers
+description: Creating servers, the state machine, power actions, reinstall and resource limits.
+icon: 'Boxes'
+---
+
+A *server* is an instance of a [unit](/docs/units) running on a node, bound to
+an allocation. Creating one drives a multi-step pipeline between the panel and
+the node.
+
+## Creation flow
+
+1. The panel validates your selection (node or region, unit, memory/CPU,
+   allocation) and marks the allocation as assigned.
+2. The panel generates a `validationToken` and posts the server to the node:
+   `POST /api/v1/servers` with limits and the allocation.
+3. The node fetches the unit configuration from the panel
+   (`GET /api/servers/:internalId/config`), stores it locally and replies
+   `201` immediately.
+4. On the node, the install pipeline runs in the background:
+   config files → cargo files → pull Docker images → run the install
+   container → create the game container.
+5. The panel flips the server state to `installing`; the console shows install
+   progress. When the game container exists, state becomes `installed`.
+
+If installation fails the state becomes `install_failed`; the node writes the
+log tail to `volumes/<server>/.installation/logs/install.log` and
+`installation.log` in the volume root.
+
+## State machine
+
+| State | Meaning |
+| ----- | ------- |
+| `creating` | Panel-side record created |
+| `installing` | Install container running |
+| `install_failed` | Install script exited non-zero |
+| `installed` | Game container created, not yet started |
+| `starting` / `running` | Power-on in progress / running |
+| `stopping` / `stopped` | Graceful stop in progress / stopped |
+| `restarting` | Restart in progress |
+| `updating` / `update_failed` | Container recreation in progress / failed |
+| `deleting` | Removal in progress |
+
+The panel refreshes state from the node whenever a server view loads, so a
+container crash is reflected the next time you look at the server.
+
+## Power actions
+
+The console WebSocket supports `start`, `stop`, `restart` and `kill`. The
+panel's HTTP power route supports `start`, `stop` and `restart`. Stop and
+restart give the container 30 seconds for a graceful shutdown before Docker
+sends `SIGKILL`; `kill` is immediate.
+
+## Resource limits
+
+| Panel field | Docker setting |
+| ----------- | -------------- |
+| Memory (MiB) | `Memory = MiB × 1024 × 1024`, `MemorySwap = 2 × Memory` |
+| CPU (%) | `CpuQuota = percent/100 × 100000µs` per `CpuPeriod = 100000µs` |
+
+100% CPU therefore equals one core; the container can never exceed its share.
+(The original TypeScript daemon mis-converted this value, leaving CPU
+effectively unlimited — the Rust daemon fixes it.)
+
+Containers also run with `no-new-privileges`, a read-only `/proc` surface and
+`unless-stopped` restart policy, so a stopped container comes back after a
+node reboot.
+
+## Editing a server
+
+Name, memory, CPU, Docker image and startup command changes all funnel
+through `PATCH /api/v1/servers/:id` on the node, which stops and recreates the
+container with the new settings (the volume survives). If the unit changed,
+the node re-fetches the unit configuration and pulls the new image first.
+
+## Reinstall
+
+Reinstall re-runs the unit's install script against the existing volume:
+the panel calls `POST /api/v1/servers/:id/reinstall`, the node removes the
+game container, re-runs installation, and reports `installed` when done. Data
+written by the server is preserved; config files and cargo are re-written.

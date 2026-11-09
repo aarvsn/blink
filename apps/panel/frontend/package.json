@@ -1,0 +1,49 @@
+{
+  "name": "@blink/panel-web",
+  "version": "1.0.0",
+  "description": "Blink panel web frontend",
+  "license": "GPL-3.0",
+  "author": "aarvsn",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@headlessui/react": "^2.2.0",
+    "@heroicons/react": "^2.2.0",
+    "@monaco-editor/react": "^4.6.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "ansi-to-html": "^0.7.2",
+    "axios": "^1.9.0",
+    "classnames": "^2.5.1",
+    "file-saver": "^2.0.5",
+    "framer-motion": "^12.0.5",
+    "js-cookie": "^3.0.5",
+    "lodash": "^4.17.21",
+    "lucide-react": "^0.474.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^6.22.0",
+    "tailwindcss": "^4.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "@types/js-cookie": "^3.0.6",
+    "@types/lodash": "^4.17.16",
+    "@types/node": "^22.10.10",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "typescript": "^5.2.2",
+    "vite": "6"
+  }
+}

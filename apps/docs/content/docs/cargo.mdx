@@ -1,0 +1,50 @@
+---
+title: Cargo
+description: Managed files, cargo containers, protection flags and shipping.
+icon: 'Ship'
+---
+
+*Cargo* is Blink's managed-file store: jars, binaries and configuration files
+that get pushed into server volumes. Admins manage cargo under
+**Admin → Cargo** and attach it to units; every server created from the unit
+receives the files.
+
+## Cargo entries
+
+A cargo entry has:
+
+* **Type** — `local` (a file uploaded to the panel's store) or `remote` (a URL
+  the node downloads directly).
+* **Target path** — where it lands in the server volume, e.g.
+  `plugins/EssentialsX.jar`.
+* **Properties** — protection flags applied on the node:
+
+| Property | Effect |
+| -------- | ------ |
+| `readonly` | File written with mode `0444`; writes, chmod, deletion and overwrites are refused |
+| `noDelete` | Deletion and rename/move refused |
+| `hidden` | Hidden from the file manager listing unless *show hidden* is on |
+
+## Cargo containers
+
+Containers group cargo entries. A container is attached to a unit as a whole;
+the unit's servers then reference the container's items. This lets you keep,
+say, a "Essentials + LuckPerms" bundle and attach it to several Minecraft
+units without duplicating entries.
+
+## Shipping
+
+Cargo files reach the node in two ways:
+
+* **At install time** — the node fetches the server config, which embeds the
+  cargo list. For `local` cargo the panel generates a signed download URL
+  (HMAC over `cargoId:serverId:expiry` with `APP_KEY`, expiring after 15
+  minutes). For `remote` cargo the node uses the URL directly.
+* **Re-ship** — **Admin → Servers** and the server page expose a ship action
+  (`POST /api/servers/:id/cargo/ship` on the panel), which re-sends the list
+  to `POST /api/v1/servers/:id/cargo/ship` on the node. Existing protected
+  files are overwritten only if they are not readonly.
+
+Readonly files are chmod'ed `0444` on the node after download, and the file
+manager API enforces the same flags on every write/delete/rename/chmod/upload
+operation — see [File manager](/docs/file-manager).

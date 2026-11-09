@@ -1,0 +1,59 @@
+---
+title: Nodes
+description: Registering nodes, connection keys, allocations and node health.
+icon: 'Server'
+---
+
+A *node* is a machine running blinkd. Before you can create servers you need
+at least one node with a free allocation.
+
+## Adding a node
+
+1. Install blinkd on the machine (see [Installation](/docs/installation)).
+2. Run `blinkd configure` on the node — it writes `blinkd.yml` and prints the
+   connection key.
+3. In the panel go to **Admin → Nodes → Create** and enter:
+   * **Name** — unique, shown in the UI.
+   * **FQDN** — hostname or IP the panel will dial. Use a full URL
+     (`https://node.example.com`) if the daemon sits behind a TLS proxy.
+   * **Port** — the daemon's `bindPort` (default 8080).
+   * **Connection key** — the `apiKey` from the node's `blinkd.yml`.
+
+The panel verifies reachability with a TCP dial when you save; the **Configure
+blinkd** dialog in the node view shows the exact `blinkd.yml` for that node.
+
+## How the panel talks to a node
+
+All panel→node calls carry the node's connection key in the `X-API-Key`
+header, compared constant-time on the node:
+
+| Call | When |
+| ---- | ---- |
+| `POST /api/v1/servers` | Creating a server (triggers the install pipeline) |
+| `PATCH /api/v1/servers/:id` | Resource/image/name/startup changes |
+| `DELETE /api/v1/servers/:id` | Deleting a server |
+| `POST /api/v1/servers/:id/power/:action` | `start`, `stop`, `restart` |
+| `POST /api/v1/servers/:id/reinstall` | Reinstall |
+| `POST /api/v1/servers/:id/cargo/ship` | Shipping cargo files |
+| `GET /api/v1/servers/:id` | Status refresh for views |
+| `GET /api/v1/state` | Node health (version, kernel, containers) |
+
+The node health data is fetched by the panel API (`GET /api/nodes/:id/state`)
+and shown on the node page — browsers never talk to `state` directly, and the
+connection key never leaves the panel process.
+
+## Allocations
+
+An allocation is a `(bindAddress, port)` pair the daemon will bind for a
+server — both TCP and UDP are forwarded into the container. Add singles or
+ranges under **Admin → Nodes → Allocations**. Ranges are expanded one port at
+a time; ports already allocated on the same address are skipped. An
+allocation is assigned to at most one server, and deleting a node requires
+its allocations to be free.
+
+## Online status
+
+Node pages poll `GET /api/nodes`, which performs a TCP dial per node
+(5-second timeout) and updates `isOnline` / `lastChecked`. A node can be
+reachable but unhealthy — the *blinkd Version* field on the node detail page
+only appears when `GET /api/v1/state` answers.

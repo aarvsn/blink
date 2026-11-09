@@ -1,0 +1,64 @@
+---
+title: Panel configuration
+description: Environment variables, the admin account and production hardening for the panel.
+icon: 'Settings'
+---
+
+The panel API reads its configuration from the environment. Bun automatically
+loads `apps/panel/server/.env`. Copy `.env.example` and edit it:
+
+```bash
+cp apps/panel/server/.env.example apps/panel/server/.env
+```
+
+| Variable | Default | Purpose |
+| -------- | ------- | ------- |
+| `PORT` | `3000` | Port the API (and the built frontend) listens on. |
+| `JWT_SECRET` | — | Signs session JWTs. **Required in production** — the server refuses to boot in `NODE_ENV=production` with a missing or well-known default. Generate with `openssl rand -hex 32`. |
+| `APP_KEY` | falls back to `JWT_SECRET` in dev | Signs the cargo download URLs handed to nodes. Required in production. |
+| `APP_URL` | `http://localhost:3000` | Public URL of this panel. Must be reachable **from your nodes**; used when signing cargo URLs. |
+| `FIRST_USER_HAS_ADMIN` | `true` | The first registered account becomes an admin. |
+| `NODE_ENV` | — | Set to `production` to enable the strict secret checks. |
+
+In development, a missing `JWT_SECRET` produces a per-boot ephemeral secret:
+sessions reset when the API restarts, but nothing crashes.
+
+## Panel name
+
+The display name in the sidebar, page titles and login screen comes from the
+database (`system_settings.panel_name`), served by `GET /api/system` and
+editable under **Admin → Settings**. It defaults to `Blink`.
+
+## Auth behaviour
+
+* Passwords are hashed with bcrypt; sessions are JWTs valid for 24 hours.
+* `POST /api/auth/login` is rate-limited to 20 attempts per 15 minutes per
+  IP; `POST /api/auth/register` to 10 per hour. Behind a reverse proxy the
+  panel trusts `X-Forwarded-For` (`trust proxy` is enabled), so limits apply
+  to real clients.
+* Registration validates usernames (3–32 chars, `[a-zA-Z0-9_.-]`) and a
+  minimum 8-character password.
+
+## Reverse proxy
+
+Terminating TLS at nginx/Caddy is the standard setup. The API serves both the
+JSON API and the built SPA on the same port, so one proxy block suffices:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name panel.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Set `APP_URL=https://panel.example.com` so signed cargo URLs point at the
+public address. Nodes behind their own proxies can use `https://` FQDNs —
+both the panel's daemon client and the console WebSocket detect the scheme
+and switch to HTTPS/WSS accordingly.

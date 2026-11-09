@@ -1,0 +1,59 @@
+---
+title: File manager
+description: The filesystem API the panel's file tab talks to, and how cargo protection is enforced.
+icon: 'FolderOpen'
+---
+
+The panel's **Files** tab is a thin client over the node's
+`/api/v1/filesystem` API. Every request carries the server's validation token
+(`Authorization: Bearer`); the node checks it against the panel and then
+serves files from `volumes/<internalId>/`.
+
+## Endpoints
+
+All paths are relative to the server volume root.
+
+| Method | Route | Purpose |
+| ------ | ----- | ------- |
+| `GET` | `/:serverId/list/{*path}?showHidden=` | Directory listing with cargo flags |
+| `GET` | `/:serverId/contents/{*path}` | File contents (streamed, ≤ 100 MB) |
+| `POST` | `/:serverId/write/{*path}` | Write file (raw body, ≤ 100 MB) |
+| `DELETE` | `/:serverId/delete/{*path}` | Delete file or directory |
+| `POST` | `/:serverId/create-directory/{*path}` | `mkdir -p` |
+| `POST` | `/:serverId/rename` | Body `{ from, to }` |
+| `POST` | `/:serverId/copy` | Body `{ from, to }`, recursive for directories |
+| `POST` | `/:serverId/chmod` | Body `{ path, mode }` (octal) |
+| `POST` | `/:serverId/upload/{*path}` | Multipart field `files[]` |
+| `GET` | `/:serverId/download/{*path}` | Zip the path (or the whole volume at `/download/`) |
+| `POST` | `/:serverId/extract/{*path}` | Multipart field `file` (zip) |
+| `GET` | `/:serverId/disk-usage` | `{ bytes, files, human }` |
+| `GET` | `/:serverId/search?query=&path=` | Case-insensitive name search |
+| `POST` | `/:serverId/compress` | Body `{ files: [], destination }` → zip |
+| `GET` | `/:serverId/cargo-info/{*path}` | Cargo flags for one file |
+| `GET` | `/:serverId/cargo-files` | All cargo files for the server |
+
+Listing entries return the panel-expected shape: `name`, `mode` (octal),
+`size`, `isFile`, `isSymlink`, `modifiedAt`/`createdAt` (ms), `mime`, plus the
+cargo flags `isCargoFile`, `hidden`, `readonly` and `noDelete`.
+
+## Path safety
+
+Two independent guards protect every route:
+
+1. **Lexical check** — the requested path is split into components; `..`,
+   absolute components and anything that would resolve outside the volume
+   root are rejected before any filesystem call.
+2. **Symlink check** — the resolved path is canonicalised and must still be
+   inside the volume; the parent chain is canonicalised for not-yet-existing
+   files so writes can't be smuggled through a symlink planted in the volume.
+
+This closes the prefix-comparison bug the original daemon had (where
+`/volumes/server2` satisfied a `startsWith('/volumes/server')` check).
+
+## Protected cargo enforcement
+
+For every mutating operation (write, delete, rename, chmod, upload,
+extract, compress) the node fetches the server's cargo list and refuses
+operations that would modify a `readonly` cargo file or delete/move a
+`noDelete` one. Renaming or deleting a *directory* that contains protected
+files is refused with the list of protected paths.

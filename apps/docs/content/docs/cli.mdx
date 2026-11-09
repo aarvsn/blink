@@ -1,0 +1,73 @@
+---
+title: CLI
+description: The blink command-line tool for users, migrations, units and cargo.
+icon: 'Terminal'
+---
+
+The panel ships a CLI (`apps/panel/server/src/cli`), exposed as:
+
+```bash
+bun --cwd apps/panel/server cli <command>     # from a checkout
+# or, once linked: blink <command>
+```
+
+Run it from the panel's server directory — it operates on `blink.db` relative
+to the project root.
+
+## `where`
+
+Shows which instance the CLI is operating on: CLI location, database location
+and whether a valid installation is detected.
+
+## User management
+
+```bash
+blink user:create <username> <password> [--admin]
+blink user:modify <username> [--set-password <pw>] [--set-permissions admin|user]
+blink user:delete <username>
+```
+
+`user:create --admin` is the recovery path if you lost your admin account.
+
+## `bolt` — database tool
+
+```bash
+blink bolt sql                    # interactive SQL shell over blink.db
+blink bolt migrate --run          # run pending migrations
+blink bolt backup [--output <file>]
+blink bolt info                   # row counts, size, journal mode
+```
+
+Backups default to `backups/blink_backup_<timestamp>.db`.
+
+## `unit` — unit management
+
+```bash
+blink unit list [--json]
+blink unit get <id>
+blink unit create --file unit.json      # create from JSON
+blink unit features <id>                # v3 feature metadata
+blink unit images <id>                  # v3 Docker image list
+blink unit meta <id>                    # unit meta/version
+blink unit seed --repo aarvsn/blink-units   # fetch starter units from GitHub
+```
+
+## `cargo` — cargo management
+
+```bash
+blink cargo list
+blink cargo get <id>
+blink cargo upload <file> --name <name> [--path <target>] [--readonly]
+blink cargo remote-add <url> --name <name> [--path <target>]
+blink cargo delete <id>
+blink cargo download <id> [--output <file>]
+blink cargo containers:list
+blink cargo containers:create <name>
+blink cargo containers:attach <containerId> <cargoId> --path <target>
+blink cargo containers:detach <containerId> <cargoId>
+```
+
+## Global flags
+
+`--version` prints the CLI version. Most commands print coloured, readable
+output; `--json` switches to machine-readable output where supported.

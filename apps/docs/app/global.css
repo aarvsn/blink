@@ -1,0 +1,73 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/* ------------------------------------------------------------------ */
+/* Blink Sans — the panel's own typeface                              */
+/* ------------------------------------------------------------------ */
+@font-face {
+  font-family: 'Blink Sans';
+  src: url('/fonts/regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Blink Sans';
+  src: url('/fonts/semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Blink Sans';
+  src: url('/fonts/bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-sans: 'Blink Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+/* ------------------------------------------------------------------ */
+/* Panel-matched dark theme                                            */
+/* Sidebar in the panel is #101219; the accent gradient runs           */
+/* #3f3e9e → #6866ff.                                                  */
+/* ------------------------------------------------------------------ */
+.dark {
+  --color-fd-background: #0d0f15;
+  --color-fd-foreground: #e6e8ef;
+  --color-fd-muted: #14161f;
+  --color-fd-muted-foreground: #9aa1b2;
+  --color-fd-popover: #14161f;
+  --color-fd-popover-foreground: #e6e8ef;
+  --color-fd-card: #101219;
+  --color-fd-card-foreground: #e6e8ef;
+  --color-fd-border: #232634;
+  --color-fd-primary: #6866ff;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-secondary: #1a1d2a;
+  --color-fd-secondary-foreground: #c9cdda;
+  --color-fd-accent: #1a1d2a;
+  --color-fd-accent-foreground: #ffffff;
+  --color-fd-ring: #6866ff;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* Gradient brand link used by the custom nav */
+.blink-gradient-text {
+  background: linear-gradient(135deg, #6866ff 0%, #3f3e9e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.blink-logo-mark {
+  background: linear-gradient(135deg, #6866ff 0%, #3f3e9e 100%);
+}

@@ -1,0 +1,67 @@
+---
+title: API reference
+description: Authentication schemes and endpoint maps for the panel API and the daemon API.
+icon: 'Code'
+---
+
+The full panel API is specified in
+[`apps/panel/server/openapi.yaml`](https://github.com/aarvsn/blink/blob/main/apps/panel/server/openapi.yaml)
+(OpenAPI 3.0). This page summarises the shapes you interact with most.
+
+## Authentication
+
+| Scheme | Used for |
+| ------ | -------- |
+| `Authorization: Bearer <jwt>` | Browser sessions (24 h expiry) |
+| `X-API-Key: <key>` | Programmatic access; keys are managed under **Admin → API Keys** and carry the permissions of their owner |
+| `X-API-Key: <node connection key>` | Panel → daemon calls (checked constant-time on the node) |
+
+## Panel endpoints (port 3000)
+
+| Method & path | Purpose |
+| ------------- | ------- |
+| `POST /api/auth/register` · `POST /api/auth/login` | Session management (rate-limited) |
+| `GET /api/auth/state` | Current user + permissions |
+| `PUT /api/auth/profile` | Change username/password |
+| `GET /api/system` | `{ name, version }` for the UI |
+| `PUT /api/system/settings` | Admin: set panel name |
+| `GET/POST/PATCH/DELETE /api/nodes` | Node CRUD (`GET /api/nodes/:id/state` proxies node health) |
+| `POST /api/nodes/:id/allocations` · `DELETE /api/nodes/:nodeId/allocations/:allocationId` | Allocation management |
+| `GET/POST/PATCH/DELETE /api/servers` | Server lifecycle |
+| `POST /api/servers/:id/power/:action` | `start` · `stop` · `restart` |
+| `POST /api/servers/:id/reinstall` | Reinstall |
+| `GET /api/servers/:id/configuration` | Startup/image data for the settings page |
+| `GET /api/servers/:internalId/validate/:token` | Node-callback: validate a browser token |
+| `GET /api/servers/:id/cargo-files` | Node-callback: protected file list |
+| `GET/POST/PATCH/DELETE /api/units` | Unit CRUD + `POST /api/units/convert` (egg import) |
+| `GET/POST/DELETE /api/cargo` | Cargo store |
+| `GET /api/cargo/:id/download` | Signed cargo download (nodes only) |
+| `GET/POST/DELETE /api/users` | Admin user management |
+| `GET/POST/DELETE /api/regions` | Region management |
+| `GET/POST/DELETE /api/projects` | Project management |
+| `GET/POST/DELETE /api/api-keys` | API key management |
+
+Daemon callbacks (`validate`, `cargo-files`, cargo downloads) are the only
+unauthenticated-looking panel routes; they are capability-gated by the
+validation token or the signed URL.
+
+## Daemon endpoints (port 8080, per node)
+
+See [Nodes](/docs/nodes) for the panel-facing table and
+[File manager](/docs/file-manager) for the browser-facing filesystem API. The
+console WebSocket lives at the node root:
+
+```
+GET ws://<node>:8080/?server=<internalId>&token=<validationToken>
+```
+
+Client → daemon events: `send_command`, `power_action`, `heartbeat`.
+Daemon → client events: `console_output`, `stats`, `power_status`,
+`auth_success`, `heartbeat_ack`, `error`, `daemon_message`.
+
+## Status codes
+
+The daemon returns `{ "error": string }` bodies for all failures:
+`400` invalid paths/payloads, `401` missing auth, `403` invalid token or
+protected cargo file, `404` unknown server, `413` oversized payloads,
+`502` Docker/panel failures.

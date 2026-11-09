@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+server/node_modules/
+
+# Builds
+dist/
+build/
+.next/
+out/
+target/
+*.tsbuildinfo
+
+# Runtime data
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.local
+uploads/
+backups/
+volumes/
+logs/
+*.log
+
+# blinkd build artefacts and runtime files (root + bin dir only)
+/blinkd
+/bin/
+blinkd.yml
+blinkd.db
+blinkd.db-journal
+
+# fumadocs-mdx generated sources
+apps/docs/.source/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Misc
+bun.lockb
+coverage/

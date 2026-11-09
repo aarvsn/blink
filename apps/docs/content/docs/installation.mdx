@@ -1,0 +1,110 @@
+---
+title: Installation
+description: Install the Blink panel and a blinkd node with the automated installer.
+icon: 'Download'
+---
+
+## Requirements
+
+| Component | Requirement |
+| --------- | ----------- |
+| OS | Linux (the panel runs anywhere Bun runs; blinkd targets Linux + Docker) |
+| Runtime | [Bun](https://bun.sh) ≥ 1.1 for the panel and docs |
+| Toolchain | Rust ≥ 1.75 (only needed to build blinkd from source) |
+| Container runtime | Docker on every node that will run game servers |
+
+## Automated installer
+
+The repository ships `install.sh`, which installs dependencies, builds the
+panel frontend, generates production secrets and (optionally) builds blinkd
+and the docs.
+
+```bash
+git clone https://github.com/aarvsn/blink.git
+cd blink
+./install.sh
+```
+
+Common flags:
+
+| Flag | Effect |
+| ---- | ------ |
+| `--skip-daemon` | Don't build blinkd (skip Rust entirely) |
+| `--skip-docs` | Don't build the documentation site |
+| `--systemd` | Also install systemd unit files (`blink-panel.service`, `blinkd.service`) |
+| `--no-frontend-build` | Reuse an existing `apps/panel/frontend/dist` |
+
+What the installer does, in order:
+
+1. Checks for Bun (and Rust unless `--skip-daemon`), with exact instructions
+   if something is missing.
+2. `bun install` across the monorepo workspaces.
+3. Builds the panel frontend (`apps/panel/frontend/dist`).
+4. Writes `apps/panel/server/.env` with fresh `JWT_SECRET` and `APP_KEY`
+   values (`openssl rand -hex 32`) unless the file already exists — the
+   installer never overwrites your secrets.
+5. Builds blinkd with `cargo build --release` and copies the binary to
+   `bin/blinkd`.
+6. Builds the docs (unless skipped).
+7. Prints the ports and paths it set up.
+
+## Manual installation
+
+If you prefer to run each step yourself:
+
+```bash
+# 1. Dependencies
+bun install
+
+# 2. Panel frontend
+bun --cwd apps/panel/frontend build
+
+# 3. Panel API environment
+cp apps/panel/server/.env.example apps/panel/server/.env
+# edit .env — set JWT_SECRET and APP_KEY, e.g. openssl rand -hex 32
+
+# 4. Run the API (serves the built frontend too)
+bun --cwd apps/panel/server start
+```
+
+For the daemon:
+
+```bash
+cd apps/blinkd
+cargo build --release
+./target/release/blinkd            # writes a template blinkd.yml
+$EDITOR blinkd.yml                 # set apiKey + appUrl
+./target/release/blinkd
+```
+
+## First login
+
+With `FIRST_USER_HAS_ADMIN=true` (the default), **the first account to
+register becomes an admin**. Open `http://your-panel:3000`, click register,
+create your account — then set up at least one [node](/docs/nodes) before you
+can create servers.
+
+## systemd services
+
+With `--systemd`, the installer writes two units:
+
+* `blink-panel.service` — runs `bun src/index.ts` in `apps/panel/server`
+* `blinkd.service` — runs the built `blinkd` binary from its directory
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now blink-panel
+sudo systemctl enable --now blinkd
+journalctl -u blinkd -f
+```
+
+## Updating
+
+```bash
+git pull
+./install.sh          # re-runs idempotently; existing .env and blinkd.yml are kept
+```
+
+After updating, restart the panel service. When the panel's API contract
+changes, update nodes to the same release — the panel and blinkd are versioned
+together in this monorepo.
